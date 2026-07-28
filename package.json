@@ -4,6 +4,7 @@
   "description": "用于发送邮件",
   "main": "index.js",
   "scripts": {
+    "build": "ncc build index.js -o dist",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -15,6 +16,7 @@
     "nodemailer": "^6.10.0"
   },
   "devDependencies": {
+    "@vercel/ncc": "^0.44.1",
     "vitest": "^4.1.10"
   }
 }
