@@ -1,0 +1,21 @@
+name: Test My Send Email Action
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send email
+        uses: bgvioletsky/send_email@v1.0.0  # 替换为你的仓库信息
+        with:
+          server_address: smtp.163.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Test Email
+          body: This is a test email sent from my custom GitHub Action.
+          to: ${{ secrets.AIM_EMAIL }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          html: false
