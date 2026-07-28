@@ -1,46 +1,83 @@
-const nodemailer = require('nodemailer');
 const core = require('@actions/core');
+const { sendEmail } = require('./lib/email');
+const { sendTelegram } = require('./lib/telegram');
 
-async function sendMail() {
-    try {
-        // 获取用户在工作流中配置的输入参数
-        const serverAddress = core.getInput('server_address');
-        const serverPort = parseInt(core.getInput('server_port'));
-        const username = core.getInput('username');
-        const password = core.getInput('password');
-        const subject = core.getInput('subject');
-        const body = core.getInput('body');
-        const to = core.getInput('to');
-        const from = core.getInput('from');
-        const isHtml = core.getInput('html') === 'true';
+const VALID_CHANNELS = ['email', 'telegram', 'both'];
 
-        // 创建 SMTP 传输对象
-        const transporter = nodemailer.createTransport({
-            host: serverAddress,
-            port: serverPort,
-            secure: serverPort === 465, // 如果端口是 465，使用 SSL
-            auth: {
-                user: username,
-                pass: password
-            }
-        });
+async function run() {
+  try {
+    const channel = core.getInput('channel') || 'email';
 
-        // 构建邮件选项
-        const mailOptions = {
-            from: from,
-            to: to,
-            subject: subject,
-            [isHtml ? 'html' : 'text']: body
-        };
-
-        // 发送邮件
-        const info = await transporter.sendMail(mailOptions);
-        core.info(`Email sent: ${info.messageId}`);
-    } catch (error) {
-        // 若发送邮件过程中出现错误，将错误信息反馈给 GitHub Actions
-        core.setFailed(`Error sending email: ${error.message}`);
+    if (!VALID_CHANNELS.includes(channel)) {
+      core.setFailed(`Invalid channel "${channel}". Must be one of: ${VALID_CHANNELS.join(', ')}`);
+      return;
     }
+
+    const tasks = [];
+
+    // Email
+    if (channel === 'email' || channel === 'both') {
+      tasks.push(
+        sendEmail({
+          serverAddress: core.getInput('server_address'),
+          serverPort: parseInt(core.getInput('server_port')),
+          username: core.getInput('username'),
+          password: core.getInput('password'),
+          subject: core.getInput('subject'),
+          body: core.getInput('body'),
+          to: core.getInput('to'),
+          from: core.getInput('from'),
+          isHtml: core.getInput('html') === 'true',
+        }).then(info => {
+          core.info(`Email sent: ${info.messageId}`);
+          return { channel: 'email', ok: true };
+        }).catch(err => {
+          core.error(`Email failed: ${err.message}`);
+          return { channel: 'email', ok: false, error: err.message };
+        })
+      );
+    }
+
+    // Telegram
+    if (channel === 'telegram' || channel === 'both') {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (!botToken) {
+        core.setFailed('TELEGRAM_BOT_TOKEN environment variable is required for Telegram');
+        return;
+      }
+
+      const chatId = core.getInput('telegram_chat_id');
+      if (!chatId) {
+        core.setFailed('telegram_chat_id input is required for Telegram');
+        return;
+      }
+
+      tasks.push(
+        sendTelegram({
+          botToken,
+          chatId,
+          text: core.getInput('body'),
+          parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
+          disablePreview: core.getInput('telegram_disable_preview') === 'true',
+        }).then(info => {
+          core.info(`Telegram sent: message_id=${info.messageId}, chat_id=${info.chat.id}`);
+          return { channel: 'telegram', ok: true };
+        }).catch(err => {
+          core.error(`Telegram failed: ${err.message}`);
+          return { channel: 'telegram', ok: false, error: err.message };
+        })
+      );
+    }
+
+    const outcomes = await Promise.all(tasks);
+    const failures = outcomes.filter(o => !o.ok);
+
+    if (failures.length > 0) {
+      core.setFailed(failures.map(f => `${f.channel}: ${f.error}`).join('; '));
+    }
+  } catch (error) {
+    core.setFailed(`Unexpected error: ${error.message}`);
+  }
 }
 
-// 调用发送邮件函数
-sendMail();
+run();

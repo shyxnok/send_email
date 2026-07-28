@@ -1,32 +1,47 @@
-name: 'My Send Email Action'
-description: 'Send an email using SMTP'
+name: 'Send Notification Action'
+description: 'Send notification via Email and/or Telegram'
 inputs:
+  channel:
+    description: 'Notification channel: email, telegram, or both'
+    required: false
+    default: 'email'
   server_address:
     description: 'SMTP server address'
-    required: true
+    required: false
   server_port:
     description: 'SMTP server port'
-    required: true
+    required: false
   username:
     description: 'Email account username'
-    required: true
+    required: false
   password:
     description: 'Email account password'
-    required: true
+    required: false
   subject:
     description: 'Email subject'
-    required: true
+    required: false
   body:
-    description: 'Email body'
+    description: 'Notification message body'
     required: true
   to:
     description: 'Recipient email address'
-    required: true
+    required: false
   from:
     description: 'Sender email address'
-    required: true
+    required: false
   html:
     description: 'Whether the email body is HTML'
+    required: false
+    default: 'false'
+  telegram_chat_id:
+    description: 'Telegram chat ID (required for telegram/both)'
+    required: false
+  telegram_parse_mode:
+    description: 'Telegram parse mode: MarkdownV2, HTML, or leave empty for plain text'
+    required: false
+    default: 'MarkdownV2'
+  telegram_disable_preview:
+    description: 'Disable link preview in Telegram messages'
     required: false
     default: 'false'
 runs:
