@@ -59,6 +59,7 @@ async function run() {
           text: core.getInput('body'),
           parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
           disablePreview: core.getInput('telegram_disable_preview') === 'true',
+          escapeMd: core.getInput('telegram_escape_markdown') === 'true',
         }).then(info => {
           core.info(`Telegram sent: message_id=${info.messageId}, chat_id=${info.chat.id}`);
           return { channel: 'telegram', ok: true };

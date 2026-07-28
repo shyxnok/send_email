@@ -44,6 +44,10 @@ inputs:
     description: 'Disable link preview in Telegram messages'
     required: false
     default: 'false'
+  telegram_escape_markdown:
+    description: 'Auto-escape MarkdownV2 special characters (use when body contains underscores, asterisks, etc.)'
+    required: false
+    default: 'false'
 runs:
   using: 'node20'
   main: 'dist/index.js'
