@@ -22,7 +22,7 @@ inputs:
     required: false
   body:
     description: 'Notification message body'
-    required: true
+    required: false
   to:
     description: 'Recipient email address'
     required: false

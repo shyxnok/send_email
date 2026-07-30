@@ -82,12 +82,15 @@ async function run() {
         ? loadTemplate(templatePath, templateVars ? JSON.parse(templateVars) : null)
         : {};
 
+      const method = core.getInput('telegram_method') || 'sendMessage';
+
       tasks.push(
         sendTelegram({
-          method: core.getInput('telegram_method') || 'sendMessage',
+          method,
           botToken,
           chatId,
-          text: tpl.text || core.getInput('body'),
+          text: method === 'sendMessage' ? (tpl.text || core.getInput('body')) : undefined,
+          parseMode: tpl.parse_mode || core.getInput('telegram_parse_mode') || 'MarkdownV2',
           parseMode: tpl.parse_mode || core.getInput('telegram_parse_mode') || 'MarkdownV2',
           disablePreview: (tpl.disable_web_page_preview !== undefined
             ? tpl.disable_web_page_preview
