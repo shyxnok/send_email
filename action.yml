@@ -51,6 +51,12 @@ inputs:
   telegram_reply_markup:
     description: 'JSON string for inline keyboard or custom reply markup'
     required: false
+  telegram_template:
+    description: 'Path to a JSON template file with {{VAR}} placeholders'
+    required: false
+  telegram_template_vars:
+    description: 'JSON object of key-value pairs for template variable substitution'
+    required: false
   telegram_method:
     description: 'Telegram method: sendMessage, sendPhoto, sendDocument, or sendMediaGroup'
     required: false

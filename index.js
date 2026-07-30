@@ -1,8 +1,31 @@
+const fs = require('fs');
+const path = require('path');
 const core = require('@actions/core');
 const { sendEmail } = require('./lib/email');
 const { sendTelegram } = require('./lib/telegram');
 
 const VALID_CHANNELS = ['email', 'telegram', 'both'];
+
+function loadTemplate(templatePath, vars) {
+  const filePath = path.isAbsolute(templatePath)
+    ? templatePath
+    : path.join(process.env.GITHUB_WORKSPACE || process.cwd(), templatePath);
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Template file not found: ${filePath}`);
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+
+  // Replace {{VAR}} with values from env or template_vars
+  const resolved = raw.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    if (vars && key in vars) return vars[key];
+    if (key in process.env) return process.env[key];
+    return match; // keep unresolved placeholders
+  });
+
+  return JSON.parse(resolved);
+}
 
 async function run() {
   try {
@@ -52,20 +75,31 @@ async function run() {
         return;
       }
 
+      // Load template if specified
+      const templatePath = core.getInput('telegram_template');
+      const templateVars = core.getInput('telegram_template_vars');
+      const tpl = templatePath
+        ? loadTemplate(templatePath, templateVars ? JSON.parse(templateVars) : null)
+        : {};
+
       tasks.push(
         sendTelegram({
           method: core.getInput('telegram_method') || 'sendMessage',
           botToken,
           chatId,
-          text: core.getInput('body'),
-          parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
-          disablePreview: core.getInput('telegram_disable_preview') === 'true',
+          text: tpl.text || core.getInput('body'),
+          parseMode: tpl.parse_mode || core.getInput('telegram_parse_mode') || 'MarkdownV2',
+          disablePreview: (tpl.disable_web_page_preview !== undefined
+            ? tpl.disable_web_page_preview
+            : core.getInput('telegram_disable_preview') === 'true'),
           escapeMd: core.getInput('telegram_escape_markdown') === 'true',
-          replyMarkup: core.getInput('telegram_reply_markup'),
+          replyMarkup: tpl.reply_markup
+            ? JSON.stringify(tpl.reply_markup)
+            : core.getInput('telegram_reply_markup'),
           photo: core.getInput('telegram_photo'),
-          photoCaption: core.getInput('telegram_photo_caption'),
+          photoCaption: tpl.caption || core.getInput('telegram_photo_caption'),
           document: core.getInput('telegram_document'),
-          documentCaption: core.getInput('telegram_document_caption'),
+          documentCaption: tpl.caption || core.getInput('telegram_document_caption'),
           media: core.getInput('telegram_media'),
           mediaGroup: core.getInput('telegram_media_group'),
         }).then(info => {
