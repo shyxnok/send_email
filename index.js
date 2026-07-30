@@ -54,12 +54,19 @@ async function run() {
 
       tasks.push(
         sendTelegram({
+          method: core.getInput('telegram_method') || 'sendMessage',
           botToken,
           chatId,
           text: core.getInput('body'),
           parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
           disablePreview: core.getInput('telegram_disable_preview') === 'true',
           escapeMd: core.getInput('telegram_escape_markdown') === 'true',
+          photo: core.getInput('telegram_photo'),
+          photoCaption: core.getInput('telegram_photo_caption'),
+          document: core.getInput('telegram_document'),
+          documentCaption: core.getInput('telegram_document_caption'),
+          media: core.getInput('telegram_media'),
+          mediaGroup: core.getInput('telegram_media_group'),
         }).then(info => {
           core.info(`Telegram sent: message_id=${info.messageId}, chat_id=${info.chat.id}`);
           return { channel: 'telegram', ok: true };

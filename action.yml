@@ -48,6 +48,28 @@ inputs:
     description: 'Auto-escape MarkdownV2 special characters (use when body contains underscores, asterisks, etc.)'
     required: false
     default: 'false'
+  telegram_method:
+    description: 'Telegram method: sendMessage, sendPhoto, sendDocument, or sendMediaGroup'
+    required: false
+    default: 'sendMessage'
+  telegram_photo:
+    description: 'Photo URL or local file path (for sendPhoto)'
+    required: false
+  telegram_photo_caption:
+    description: 'Caption for the photo'
+    required: false
+  telegram_document:
+    description: 'Document URL or local file path (for sendDocument)'
+    required: false
+  telegram_document_caption:
+    description: 'Caption for the document'
+    required: false
+  telegram_media:
+    description: 'Comma-separated photo URLs for simple media group'
+    required: false
+  telegram_media_group:
+    description: 'JSON array of {type, media, caption} objects for media group'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'
