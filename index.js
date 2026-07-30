@@ -18,7 +18,7 @@ function loadTemplate(templatePath, vars) {
   const raw = fs.readFileSync(filePath, 'utf8');
 
   // Replace {{VAR}} with values from env or template_vars
-  const resolved = raw.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+  const resolved = raw.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
     if (vars && key in vars) return vars[key];
     if (key in process.env) return process.env[key];
     return match; // keep unresolved placeholders

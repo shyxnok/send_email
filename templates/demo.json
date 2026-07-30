@@ -1,0 +1,17 @@
+{
+  "parse_mode": "HTML",
+  "disable_web_page_preview": true,
+  "caption": "<b>📡 {{PROJECT}} 部署通知</b>\n━━━━━━━━━━━━━━\n<i>🕒 {{TIME}}</i>\n\n<blockquote>📊 部署详情\n环境：{{ENV}}\n版本：{{ VERSION }}\nCommit：{{SHA}}</blockquote>\n\n<b>🧪 测试结果</b>\n✅ 单元测试：{{TESTS_PASS}}/{{TESTS_TOTAL}}\n✅ 覆盖率：{{COVERAGE}}%\n\n<a href=\"{{LOG_URL}}\">👉 查看完整日志</a>",
+  "reply_markup": {
+    "inline_keyboard": [
+      [
+        {"text": "📦 构建日志", "url": "{{LOG_URL}}"},
+        {"text": "🐛 提交记录", "url": "{{COMMIT_URL}}"}
+      ],
+      [
+        {"text": "🔄 重新部署", "callback_data": "redeploy_{{ENV}}"},
+        {"text": "🔙 回滚", "callback_data": "rollback_{{ENV}}"}
+      ]
+    ]
+  }
+}
