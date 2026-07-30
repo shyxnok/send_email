@@ -1,6 +1,6 @@
 {
   "name": "send_email",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "用于发送邮件",
   "main": "index.js",
   "scripts": {
