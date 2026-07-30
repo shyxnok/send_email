@@ -1,0 +1,50 @@
+name: Test Telegram Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      method:
+        description: 'Telegram 方法'
+        required: true
+        type: choice
+        default: 'sendMessage'
+        options:
+          - sendMessage
+          - sendPhoto
+          - sendDocument
+          - sendMediaGroup
+      photo_url:
+        description: '图片 URL（sendPhoto / sendMediaGroup 用）'
+        required: false
+        type: string
+        default: 'https://picsum.photos/id/237/600/400'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send Notification
+        uses: ./
+        with:
+          channel: telegram
+          telegram_method: ${{ github.event.inputs.method }}
+          telegram_template: './templates/demo.json'
+          telegram_template_vars: |
+            {
+              "TESTS_PASS": "142",
+              "TESTS_TOTAL": "142",
+              "COVERAGE": "96.3"
+            }
+          telegram_photo: ${{ github.event.inputs.photo_url }}
+          telegram_chat_id: "${{ secrets.TELEGRAM_CHAT_ID }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          PROJECT: 'SendEmail'
+          TIME: '${{ github.event.repository.updated_at }}'
+          ENV: 'test'
+          VERSION: 'v1.0.0'
+          SHA: '${{ github.sha }}'
+          LOG_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          COMMIT_URL: '${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}'
