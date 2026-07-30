@@ -1,0 +1,180 @@
+name: Daily Wallhaven Scrape
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "Specific page(s) to scrape, e.g. '42' or '1-3' (overrides next_page.txt)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine page to scrape
+        id: pagedecide
+        run: |
+          if [ -n "${{ github.event.inputs.pages }}" ]; then
+            echo "pages=${{ github.event.inputs.pages }}" >> "$GITHUB_OUTPUT"
+            echo "mode=manual" >> "$GITHUB_OUTPUT"
+          else
+            PAGE=$(cat next_page.txt)
+            echo "pages=$PAGE" >> "$GITHUB_OUTPUT"
+            echo "page_folder=page_$(printf '%04d' $PAGE)" >> "$GITHUB_OUTPUT"
+            echo "mode=scheduled" >> "$GITHUB_OUTPUT"
+            echo "page_number=$PAGE" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: pip install beautifulsoup4
+
+      - name: Run scraper
+        id: scrape
+        continue-on-error: true
+        run: |
+          PAGES="${{ steps.pagedecide.outputs.pages }}"
+          MODE="${{ steps.pagedecide.outputs.mode }}"
+
+          if [ "$MODE" = "scheduled" ]; then
+            FOLDER="${{ steps.pagedecide.outputs.page_folder }}"
+            python3 scraper.py \
+              -p "$PAGES" \
+              -d "$FOLDER" \
+              --delay-page 2 \
+              --delay-image 1.5 \
+              --delay-detail 1.5
+            echo "folder=$FOLDER" >> "$GITHUB_OUTPUT"
+          else
+            python3 scraper.py \
+              -p "$PAGES" \
+              -d "manual_scrape_$(date +%Y%m%d_%H%M%S)" \
+              --delay-page 2 \
+              --delay-image 1.5 \
+              --delay-detail 1.5
+          fi
+
+      - name: Advance page counter (scheduled only)
+        if: steps.pagedecide.outputs.mode == 'scheduled'
+        run: |
+          CURRENT=${{ steps.pagedecide.outputs.page_number }}
+          NEXT=$((CURRENT + 1))
+          echo "$NEXT" > next_page.txt
+
+      - name: Commit and push changes
+        id: commit
+        run: |
+          FOLDER="${{ steps.scrape.outputs.folder }}"
+          MODE="${{ steps.pagedecide.outputs.mode }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ "$MODE" = "scheduled" ] && [ -d "$FOLDER" ]; then
+            git add "$FOLDER/"
+          elif [ "$MODE" != "scheduled" ]; then
+            git add manual_scrape_*/
+          fi
+
+          git add next_page.txt
+
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            if [ "$MODE" = "scheduled" ]; then
+              COMMIT_MSG="Daily scrape: page ${{ steps.pagedecide.outputs.page_number }} ($(date +%Y-%m-%d))"
+            else
+              COMMIT_MSG="Manual scrape: pages ${{ steps.pagedecide.outputs.pages }} ($(date +%Y-%m-%d))"
+            fi
+            git commit -m "$COMMIT_MSG"
+            git push
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+            echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Telegram: prepare data ─────────────────────────────────────────
+      - name: Prepare Telegram data
+        id: tg_prep
+        if: success()
+        run: |
+          FOLDER="${{ steps.scrape.outputs.folder }}"
+          MODE="${{ steps.pagedecide.outputs.mode }}"
+
+          if [ "$MODE" = "scheduled" ]; then
+            DIR="$FOLDER"
+          else
+            DIR=$(ls -d manual_scrape_*/ 2>/dev/null | tail -1)
+          fi
+
+          # Strip trailing slash (ls -d returns dirs with /)
+          DIR="${DIR%/}"
+
+          if [ -z "$DIR" ] || [ ! -f "$DIR/urls.txt" ]; then
+            echo "has_urls=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          COUNT=$(wc -l < "$DIR/urls.txt" | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "folder=$DIR" >> "$GITHUB_OUTPUT"
+          echo "has_urls=true" >> "$GITHUB_OUTPUT"
+
+          # Build pic.201562.xyz URLs for first 8 preview images
+          RAW_BASE="https://pic.201562.xyz/wallhaven"
+          PREVIEWS=$(ls "$DIR"/*.{jpg,jpeg,png,gif} 2>/dev/null | head -8)
+
+          if [ -n "$PREVIEWS" ]; then
+            FIRST=true
+            echo -n "[" > previews.json
+            for f in $PREVIEWS; do
+              FNAME=$(basename "$f")
+              [ "$FIRST" = false ] && echo -n "," >> previews.json
+              echo -n "{\"type\":\"photo\",\"media\":\"${RAW_BASE}/${DIR}/${FNAME}\"}" >> previews.json
+              FIRST=false
+            done
+            echo "]" >> previews.json
+            echo "preview_json=$(cat previews.json)" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Telegram: summary text ─────────────────────────────────────────
+      - name: Notify Telegram (summary)
+        if: success() && steps.tg_prep.outputs.has_urls == 'true'
+        uses: shyxnok/send_email@v1.1.0
+        with:
+          channel: telegram
+          body: |
+            📥 <b>Wallhaven 抓取完成</b>
+            ━━━━━━━━━━━━━━━━━━━━
+            📄 页数：${{ steps.pagedecide.outputs.page_number }}
+            🖼 图片：${{ steps.tg_prep.outputs.count }} 张
+            📁 文件夹：<code>${{ steps.tg_prep.outputs.folder }}</code>
+            💬 提交：<code>${{ steps.commit.outputs.commit_msg }}</code>
+            🔗 <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">运行详情</a>
+          telegram_parse_mode: HTML
+          telegram_chat_id: "${{ secrets.TELEGRAM_CHAT_ID }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+      # ── Telegram: preview images (via raw.githubusercontent.com) ───────
+      - name: Notify Telegram (preview images)
+        if: success() && steps.tg_prep.outputs.preview_json != ''
+        uses: shyxnok/send_email@v1.1.0
+        with:
+          channel: telegram
+          telegram_method: sendMediaGroup
+          telegram_media_group: ${{ steps.tg_prep.outputs.preview_json }}
+          telegram_chat_id: "${{ secrets.TELEGRAM_CHAT_ID }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
