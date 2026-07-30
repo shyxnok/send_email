@@ -61,6 +61,7 @@ async function run() {
           parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
           disablePreview: core.getInput('telegram_disable_preview') === 'true',
           escapeMd: core.getInput('telegram_escape_markdown') === 'true',
+          replyMarkup: core.getInput('telegram_reply_markup'),
           photo: core.getInput('telegram_photo'),
           photoCaption: core.getInput('telegram_photo_caption'),
           document: core.getInput('telegram_document'),

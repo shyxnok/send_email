@@ -48,6 +48,9 @@ inputs:
     description: 'Auto-escape MarkdownV2 special characters (use when body contains underscores, asterisks, etc.)'
     required: false
     default: 'false'
+  telegram_reply_markup:
+    description: 'JSON string for inline keyboard or custom reply markup'
+    required: false
   telegram_method:
     description: 'Telegram method: sendMessage, sendPhoto, sendDocument, or sendMediaGroup'
     required: false

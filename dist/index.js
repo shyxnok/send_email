@@ -53,7 +53,7 @@ function resolveFilePath(filePath) {
 
 // ── sendMessage ───────────────────────────────────────────────────────────
 async function sendTelegramMessage({ botToken, chatId, text, parseMode,
-                                     disablePreview, escapeMd }) {
+                                     disablePreview, escapeMd, replyMarkup }) {
   if (parseMode === 'MarkdownV2' && escapeMd) {
     text = escapeMarkdownV2(text);
   }
@@ -61,6 +61,7 @@ async function sendTelegramMessage({ botToken, chatId, text, parseMode,
 
   if (parseMode) body.parse_mode = parseMode;
   if (disablePreview) body.disable_web_page_preview = true;
+  if (replyMarkup) body.reply_markup = JSON.parse(replyMarkup);
 
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
@@ -85,7 +86,7 @@ async function sendTelegramMessage({ botToken, chatId, text, parseMode,
 
 // ── sendPhoto ─────────────────────────────────────────────────────────────
 async function sendTelegramPhoto({ botToken, chatId, photo, caption, parseMode,
-                                   disablePreview, escapeMd }) {
+                                   disablePreview, escapeMd, replyMarkup }) {
   if (!photo) throw new Error('telegram_photo is required for sendPhoto');
 
   if (parseMode === 'MarkdownV2' && escapeMd && caption) {
@@ -105,6 +106,7 @@ async function sendTelegramPhoto({ botToken, chatId, photo, caption, parseMode,
   if (caption) form.append('caption', caption);
   if (parseMode) form.append('parse_mode', parseMode);
   if (disablePreview) form.append('disable_web_page_preview', 'true');
+  if (replyMarkup) form.append('reply_markup', replyMarkup);
 
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
     method: 'POST',
@@ -128,7 +130,7 @@ async function sendTelegramPhoto({ botToken, chatId, photo, caption, parseMode,
 
 // ── sendDocument ──────────────────────────────────────────────────────────
 async function sendTelegramDocument({ botToken, chatId, document, caption,
-                                      parseMode, disablePreview, escapeMd }) {
+                                      parseMode, disablePreview, escapeMd, replyMarkup }) {
   if (!document) throw new Error('telegram_document is required for sendDocument');
 
   if (parseMode === 'MarkdownV2' && escapeMd && caption) {
@@ -148,6 +150,7 @@ async function sendTelegramDocument({ botToken, chatId, document, caption,
   if (caption) form.append('caption', caption);
   if (parseMode) form.append('parse_mode', parseMode);
   if (disablePreview) form.append('disable_web_page_preview', 'true');
+  if (replyMarkup) form.append('reply_markup', replyMarkup);
 
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
     method: 'POST',
@@ -226,9 +229,9 @@ async function sendTelegramMediaGroup({ botToken, chatId, media, mediaGroup,
 
 // ── Main dispatch ─────────────────────────────────────────────────────────
 async function sendTelegram({ method, botToken, chatId, text, parseMode,
-                              disablePreview, escapeMd, photo, photoCaption,
+                              disablePreview, escapeMd, replyMarkup, photo, photoCaption,
                               document, documentCaption, media, mediaGroup }) {
-  const opts = { botToken, chatId, parseMode, disablePreview, escapeMd };
+  const opts = { botToken, chatId, parseMode, disablePreview, escapeMd, replyMarkup };
 
   switch (method) {
     case 'sendPhoto':
@@ -41454,6 +41457,7 @@ async function run() {
           parseMode: core.getInput('telegram_parse_mode') || 'MarkdownV2',
           disablePreview: core.getInput('telegram_disable_preview') === 'true',
           escapeMd: core.getInput('telegram_escape_markdown') === 'true',
+          replyMarkup: core.getInput('telegram_reply_markup'),
           photo: core.getInput('telegram_photo'),
           photoCaption: core.getInput('telegram_photo_caption'),
           document: core.getInput('telegram_document'),
